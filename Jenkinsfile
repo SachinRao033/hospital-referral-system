@@ -5,10 +5,6 @@ pipeline {
         timestamps()
     }
 
-    environment {
-        COMPOSE_PROJECT_NAME = "hospital"
-    }
-
     stages {
 
         stage('Checkout') {
@@ -19,11 +15,11 @@ pipeline {
             }
         }
 
-        stage('Create .env Files') {
+        stage('Create Environment Files') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'backend-env', variable: 'BACKEND_ENV'),
-                    string(credentialsId: 'frontend-env', variable: 'FRONTEND_ENV')
+                    string(credentialsId: 'BACKEND_ENV', variable: 'BACKEND_ENV'),
+                    string(credentialsId: 'FRONTEND_ENV', variable: 'FRONTEND_ENV')
                 ]) {
                     sh '''
                     printf "%s" "$BACKEND_ENV" > backend/.env
@@ -33,7 +29,7 @@ pipeline {
             }
         }
 
-        stage('Build Images') {
+        stage('Build Docker Images') {
             steps {
                 sh 'docker compose build --no-cache'
             }
@@ -48,7 +44,7 @@ pipeline {
             }
         }
 
-        stage('Wait') {
+        stage('Wait for Services') {
             steps {
                 sh 'sleep 20'
             }
@@ -66,7 +62,7 @@ pipeline {
             }
         }
 
-        stage('Verify') {
+        stage('Verify Deployment') {
             steps {
                 sh 'docker ps'
             }
@@ -75,10 +71,10 @@ pipeline {
 
     post {
         success {
-            echo 'SUCCESS: Hospital Referral System deployed successfully!'
+            echo 'Hospital Referral System deployed successfully!'
         }
         failure {
-            echo 'FAILED: Deployment failed.'
+            echo 'Deployment failed!'
         }
     }
 }
