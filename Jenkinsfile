@@ -7,45 +7,47 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        stage('Update Project') {
             steps {
-                checkout scm
+                sh '''
+                cd /home/ubuntu/hospital-referral-system
+                git pull origin main
+                '''
             }
         }
 
-        stage('Build Images') {
+        stage('Build Docker Images') {
             steps {
-                sh 'docker compose build --no-cache'
+                sh '''
+                cd /home/ubuntu/hospital-referral-system
+                docker compose build --no-cache
+                '''
             }
         }
 
-        stage('Stop Old Containers') {
+        stage('Deploy Containers') {
             steps {
-                sh 'docker compose down || true'
-            }
-        }
-
-        stage('Start Containers') {
-            steps {
-                sh 'docker compose up -d'
-            }
-        }
-
-        stage('Wait') {
-            steps {
-                sh 'sleep 20'
+                sh '''
+                cd /home/ubuntu/hospital-referral-system
+                docker compose down
+                docker compose up -d
+                '''
             }
         }
 
         stage('Prisma Migration') {
             steps {
-                sh 'docker exec hospital-backend npx prisma migrate deploy'
+                sh '''
+                docker exec hospital-backend npx prisma migrate deploy
+                '''
             }
         }
 
-        stage('Seed Database') {
+        stage('Seed Admin') {
             steps {
-                sh 'docker exec hospital-backend npm run seed'
+                sh '''
+                docker exec hospital-backend npm run seed
+                '''
             }
         }
 
@@ -57,14 +59,11 @@ pipeline {
     }
 
     post {
-
         success {
-            echo 'Deployment Successful'
+            echo 'Hospital Referral System deployed successfully!'
         }
-
         failure {
-            echo 'Deployment Failed'
+            echo 'Deployment failed!'
         }
-
     }
 }
