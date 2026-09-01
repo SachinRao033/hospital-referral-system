@@ -3,6 +3,7 @@ pipeline {
 
     options {
         timestamps()
+        disableConcurrentBuilds()
     }
 
     stages {
@@ -12,20 +13,6 @@ pipeline {
                 git branch: 'main',
                     credentialsId: 'github-creds',
                     url: 'https://github.com/SachinRao033/hospital-referral-system.git'
-            }
-        }
-
-        stage('Create Environment Files') {
-            steps {
-                withCredentials([
-                    string(credentialsId: 'BACKEND_ENV', variable: 'BACKEND_ENV'),
-                    string(credentialsId: 'FRONTEND_ENV', variable: 'FRONTEND_ENV')
-                ]) {
-                    sh '''
-                    printf "%s" "$BACKEND_ENV" > backend/.env
-                    printf "%s" "$FRONTEND_ENV" > frontend/.env
-                    '''
-                }
             }
         }
 
@@ -52,28 +39,32 @@ pipeline {
 
         stage('Prisma Migration') {
             steps {
-                sh 'docker exec hospital-backend npx prisma migrate deploy'
+                sh '''
+                docker exec hospital-backend npx prisma migrate deploy || \
+                docker exec hospital-backend npx prisma db push
+                '''
             }
         }
 
-        stage('Seed Admin') {
+        stage('Seed Super Admin') {
             steps {
-                sh 'docker exec hospital-backend npm run seed'
+                sh 'docker exec hospital-backend node src/utils/seedAdmin.js || true'
             }
         }
 
-        stage('Verify Deployment') {
+        stage('Health Check') {
             steps {
-                sh 'docker ps'
+                sh 'curl --fail http://localhost:4000/api/health'
             }
         }
     }
 
     post {
         success {
-            echo 'Hospital Referral System deployed successfully!'
+            echo 'Deployment completed successfully!'
         }
         failure {
+            sh 'docker logs hospital-backend --tail=50 || true'
             echo 'Deployment failed!'
         }
     }
